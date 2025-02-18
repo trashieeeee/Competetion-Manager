@@ -25,6 +25,7 @@
         
         <div class="tables" id="tables"></div>
         <div class="leaderboard" id="leaderboard"></div>
+        <div id="playerList"></div>
         
         <button onclick="submitScores()">Submit Scores</button>
         <button onclick="nextRound()">Next Round</button>
@@ -41,12 +42,25 @@
             const nameInput = document.getElementById("playerName");
             const name = nameInput.value.trim();
             if (name && !players.includes(name)) {
+                if (players.length >= 20) {
+                    alert("Maximum of 20 players reached!");
+                    return;
+                }
                 players.push(name);
                 scores[name] = 0;
                 pastPairings.set(name, new Set());
                 nameInput.value = "";
                 displayLeaderboard();
+                displayPlayers();
             }
+        }
+        
+        function displayPlayers() {
+            let playerListDiv = document.getElementById("playerList");
+            playerListDiv.innerHTML = "<h2>Players</h2>";
+            players.forEach((player, index) => {
+                playerListDiv.innerHTML += `<p>${index + 1}. ${player}</p>`;
+            });
         }
         
         function startCompetition() {
@@ -74,22 +88,27 @@
             
             let newTables = [];
             let remainingPlayers = [...players];
-            shuffle(remainingPlayers);
             
-            while (remainingPlayers.length >= 4) {
-                let table = [];
-                for (let i = 0; i < 4; i++) {
-                    let player = remainingPlayers.find(p => table.every(t => !pastPairings.get(t).has(p)));
-                    if (player) {
-                        table.push(player);
-                        remainingPlayers.splice(remainingPlayers.indexOf(player), 1);
+            if (rounds === 3) {
+                remainingPlayers = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 4).map(entry => entry[0]);
+                newTables.push(remainingPlayers);
+            } else {
+                shuffle(remainingPlayers);
+                while (remainingPlayers.length >= 4) {
+                    let table = [];
+                    for (let i = 0; i < 4; i++) {
+                        let player = remainingPlayers.find(p => table.every(t => !pastPairings.get(t).has(p)));
+                        if (player) {
+                            table.push(player);
+                            remainingPlayers.splice(remainingPlayers.indexOf(player), 1);
+                        }
                     }
-                }
-                if (table.length === 4) {
-                    newTables.push(table);
-                    table.forEach(p => table.forEach(other => {
-                        if (p !== other) pastPairings.get(p).add(other);
-                    }));
+                    if (table.length === 4) {
+                        newTables.push(table);
+                        table.forEach(p => table.forEach(other => {
+                            if (p !== other) pastPairings.get(p).add(other);
+                        }));
+                    }
                 }
             }
             displayTables(newTables);
@@ -97,10 +116,10 @@
 
         function displayTables(tables) {
             const tablesDiv = document.getElementById("tables");
-            tablesDiv.innerHTML = "<h2>Round " + rounds + " Tables</h2>";
+            tablesDiv.innerHTML = `<h2>Round ${rounds} Tables</h2>`;
             
             tables.forEach((table, index) => {
-                let tableHTML = "<div class='table'><h3>Table " + (index + 1) + "</h3>";
+                let tableHTML = `<div class='table'><h3>Table ${index + 1}</h3>`;
                 table.forEach(player => {
                     tableHTML += `<p>${player} <input type='number' id='score-${player}' min='0'></p>`;
                 });
