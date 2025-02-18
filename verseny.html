@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competition Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 800px; margin: auto; text-align: center; }
+        .tables, .leaderboard { margin-top: 20px; }
+        .table { border: 1px solid black; padding: 10px; margin: 10px; display: inline-block; }
+        .player-input { margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Competition Manager</h1>
+        
+        <div>
+            <input type="text" id="playerName" class="player-input" placeholder="Enter player name">
+            <button onclick="addPlayer()">Add Player</button>
+        </div>
+        
+        <button onclick="startCompetition()">Start Competition</button>
+        
+        <div class="tables" id="tables"></div>
+        <div class="leaderboard" id="leaderboard"></div>
+        
+        <button onclick="submitScores()">Submit Scores</button>
+        <button onclick="nextRound()">Next Round</button>
+    </div>
+
+    <script>
+        let players = [];
+        let rounds = 0;
+        let scores = {};
+        let competitionStarted = false;
+        let pastPairings = new Map();
+
+        function addPlayer() {
+            const nameInput = document.getElementById("playerName");
+            const name = nameInput.value.trim();
+            if (name && !players.includes(name)) {
+                players.push(name);
+                scores[name] = 0;
+                pastPairings.set(name, new Set());
+                nameInput.value = "";
+                displayLeaderboard();
+            }
+        }
+        
+        function startCompetition() {
+            if (players.length < 4) {
+                alert("At least 4 players are required to start the competition!");
+                return;
+            }
+            competitionStarted = true;
+            generateTables();
+        }
+        
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function generateTables() {
+            if (!competitionStarted) {
+                alert("Start the competition first!");
+                return;
+            }
+            rounds++;
+            
+            let newTables = [];
+            let remainingPlayers = [...players];
+            shuffle(remainingPlayers);
+            
+            while (remainingPlayers.length >= 4) {
+                let table = [];
+                for (let i = 0; i < 4; i++) {
+                    let player = remainingPlayers.find(p => table.every(t => !pastPairings.get(t).has(p)));
+                    if (player) {
+                        table.push(player);
+                        remainingPlayers.splice(remainingPlayers.indexOf(player), 1);
+                    }
+                }
+                if (table.length === 4) {
+                    newTables.push(table);
+                    table.forEach(p => table.forEach(other => {
+                        if (p !== other) pastPairings.get(p).add(other);
+                    }));
+                }
+            }
+            displayTables(newTables);
+        }
+
+        function displayTables(tables) {
+            const tablesDiv = document.getElementById("tables");
+            tablesDiv.innerHTML = "<h2>Round " + rounds + " Tables</h2>";
+            
+            tables.forEach((table, index) => {
+                let tableHTML = "<div class='table'><h3>Table " + (index + 1) + "</h3>";
+                table.forEach(player => {
+                    tableHTML += `<p>${player} <input type='number' id='score-${player}' min='0'></p>`;
+                });
+                tableHTML += "</div>";
+                tablesDiv.innerHTML += tableHTML;
+            });
+        }
+
+        function submitScores() {
+            players.forEach(player => {
+                let scoreInput = document.getElementById(`score-${player}`);
+                if (scoreInput) {
+                    scores[player] += parseInt(scoreInput.value) || 0;
+                }
+            });
+            displayLeaderboard();
+        }
+        
+        function nextRound() {
+            if (!competitionStarted) {
+                alert("Start the competition first!");
+                return;
+            }
+            if (rounds >= 3) {
+                alert("Competition is over!");
+                return;
+            }
+            submitScores();
+            generateTables();
+        }
+        
+        function displayLeaderboard() {
+            let leaderboardDiv = document.getElementById("leaderboard");
+            leaderboardDiv.innerHTML = "<h2>Leaderboard</h2>";
+            let sortedPlayers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            sortedPlayers.forEach(([name, score]) => {
+                leaderboardDiv.innerHTML += `<p>${name}: ${score} points</p>`;
+            });
+        }
+    </script>
+</body>
+</html>
